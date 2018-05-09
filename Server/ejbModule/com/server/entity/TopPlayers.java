@@ -2,6 +2,9 @@ package com.server.entity;
 
 import java.io.Serializable;
 
+/**
+ * @author Jakub Juško, Ivan Petrov
+ */
 public class TopPlayers implements Serializable {
 	
 	private String Name;

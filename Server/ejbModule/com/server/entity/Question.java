@@ -2,6 +2,9 @@ package com.server.entity;
 
 import java.io.Serializable;
 
+/**
+ * @author Jakub Juško, Ivan Petrov
+ */
 public class Question implements Serializable  {
 	
 	private String question;

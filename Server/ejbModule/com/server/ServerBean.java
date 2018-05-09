@@ -5,9 +5,10 @@ import java.util.*;
 import javax.ejb.*;
 import javax.naming.*;
 import javax.sql.DataSource;
-
+import java.io.IOException;
+import javax.mail.*;
+import javax.mail.internet.*;
 import com.server.entity.*;
-
 
 /**
  * @author Jakub Juško, Ivan Petrov
@@ -28,25 +29,18 @@ public class ServerBean implements ServerBeanRemote {
 		
 		List<Question> otazky = new ArrayList<Question>();
 
+		Properties p = new Properties();
 		Connection conn = null;
-		
-		
-		String otazka = new String();
-		String odpoved = new String();
+		String otazka = null;
+		String odpoved = null;
 		boolean spr = false;
-
 		
 		try {
+		
+			p.load(this.getClass().getResourceAsStream("/configuration.properties"));	
 			Context ctx = new InitialContext();
-			DataSource ds = (DataSource) ctx.lookup("java:jboss/datasources/PostgresDS");
+			DataSource ds = (DataSource) ctx.lookup(p.getProperty("DATASOURCE"));
 			conn = (Connection) ds.getConnection();
-
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("databaza test");
-		}
-
-		try {
 
 			PreparedStatement stmt = conn.prepareStatement("select o.text_otazky,o2.text_odpovede,o2.spravna from odpoved o2 "
 					+"join otazky o on o2.otazka_id = o.otazky_id "
@@ -64,20 +58,18 @@ public class ServerBean implements ServerBeanRemote {
 				o.setQuestion(rs.getString(1));
 				o.setAnswer(rs.getString(2));
 				o.setCorrect(rs.getBoolean(3));
-			   
 				otazky.add(o);
-				System.out.println(otazky.size());
 			}
 
 			stmt.close();
 			conn.close();
 
-		} catch (SQLException e) {
+		} catch (IOException | NamingException | SQLException e) {
 
 			e.printStackTrace();
 		}
 	
-		return otazky;
+	return otazky;
 	}
 
 	/**
@@ -86,28 +78,25 @@ public class ServerBean implements ServerBeanRemote {
 	 * @param	body pocet ziskanych bodov
 	 * @see		TopPlayers
 	 */
-	public void pridaj(String meno, int body) {
-
+	public void pridaj(TopPlayers hrac) {
+		
+		Properties p = new Properties();
 		Connection conn = null;
+		
 		try {
+				
 			Context ctx = new InitialContext();
-			DataSource ds = (DataSource) ctx.lookup("java:jboss/datasources/PostgresDS");
+			p.load(this.getClass().getResourceAsStream("/configuration.properties"));	
+			DataSource ds = (DataSource) ctx.lookup(p.getProperty("DATASOURCE"));
 			conn = (Connection) ds.getConnection();
-
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("databaza test");
-		}
-
-		try {
-
-			PreparedStatement stmt = conn.prepareStatement("insert into rebricek (meno, body) values ('"+meno+"',"+body+");");
-			 stmt.executeUpdate();
+	
+			PreparedStatement stmt = conn.prepareStatement("insert into rebricek (meno, body) values ('"+hrac.getName()+"',"+hrac.getScore()+");");
+			stmt.executeUpdate();
 			
 			stmt.close();
 			conn.close();
 
-		} catch (SQLException e) {
+		} catch (IOException | NamingException | SQLException e) {
 
 			e.printStackTrace();
 		}
@@ -122,25 +111,17 @@ public class ServerBean implements ServerBeanRemote {
 	public List<TopPlayers> getTopPlayers() {
 		
 		List<TopPlayers> hraci = new ArrayList<TopPlayers>();
-		
 		Connection conn = null;
-		
-		String meno = new String();
-		int body = 0;
+		Properties p = new Properties();
 		
 		try {
+		
 			Context ctx = new InitialContext();
-			DataSource ds = (DataSource) ctx.lookup("java:jboss/datasources/PostgresDS");
+			p.load(this.getClass().getResourceAsStream("/configuration.properties"));
+			DataSource ds = (DataSource) ctx.lookup(p.getProperty("DATASOURCE"));
 			conn = (Connection) ds.getConnection();
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("databaza test");
-		}
-
-		try {
-
-			PreparedStatement stmt = conn.prepareStatement("select * from rebricek;");
+			PreparedStatement stmt = conn.prepareStatement(p.getProperty("SELECTHRACI"));
 			ResultSet rs = stmt.executeQuery();
 	
 			while (rs.next()) {
@@ -155,11 +136,59 @@ public class ServerBean implements ServerBeanRemote {
 			stmt.close();
 			conn.close();
 
-		} catch (SQLException e) {
+		} catch (IOException | NamingException | SQLException e) {
 
 			e.printStackTrace();
 		}
 	
-		return hraci;
+	return hraci;
+	}
+
+	/**
+	 * 
+	 * Metoda ktora posli na zadanu emailovu adresu email s menom hraca 
+	 * a poctom ziskanych bodov
+	 * @param	email	cielova emailova adresa
+	 * @param	hrac 	aktualny hrac 
+	 */
+	public void SentEmail(String email, TopPlayers hrac) {
+
+		try {	
+			
+			Properties props = new Properties();
+			Properties p = new Properties();
+			
+			p.load(this.getClass().getResourceAsStream("/configuration.properties"));
+			props.load(this.getClass().getResourceAsStream("/mail.properties"));
+
+			Session session = Session.getDefaultInstance(props, new javax.mail.Authenticator() {
+
+				protected PasswordAuthentication getPasswordAuthentication() {
+
+					return new PasswordAuthentication(p.getProperty("USERNAME"), p.getProperty("PASSWORD"));
+				}
+			});
+
+			Message message = new MimeMessage(session);
+			message.setFrom(new InternetAddress(p.getProperty("EMAIL")));
+			message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email));
+			message.setSubject(p.getProperty("SUBJECT"));
+			
+			String text = "Dakujeme "+hrac.getName()+", ze ste si vyskusali svoje znalosti "
+					+ " pomocou nasej aplikacie Brain Challenge\nVase ziskane skore je "+hrac.getScore()+"\n\n\n\n"
+							+ "Brain Challenge Development Team,\nVasVa 2018 FIIT STU";
+			message.setText(text);
+
+			Transport.send(message);
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		}
+
+		catch (MessagingException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }
