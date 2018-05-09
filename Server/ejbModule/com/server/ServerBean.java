@@ -6,7 +6,28 @@ import javax.ejb.*;
 import javax.naming.*;
 import javax.sql.DataSource;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Date;
+import javax.activation.DataHandler;
+import javax.activation.FileDataSource;
+import javax.mail.BodyPart;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+
 import com.server.entity.*;
+import com.sun.corba.se.spi.activation.Server;
 
 
 /**
@@ -86,7 +107,7 @@ public class ServerBean implements ServerBeanRemote {
 	 * @param	body pocet ziskanych bodov
 	 * @see		TopPlayers
 	 */
-	public void pridaj(String meno, int body) {
+	public void pridaj(TopPlayers hrac) {
 
 		Connection conn = null;
 		try {
@@ -101,7 +122,7 @@ public class ServerBean implements ServerBeanRemote {
 
 		try {
 
-			PreparedStatement stmt = conn.prepareStatement("insert into rebricek (meno, body) values ('"+meno+"',"+body+");");
+			PreparedStatement stmt = conn.prepareStatement("insert into rebricek (meno, body) values ('"+hrac.getName()+"',"+hrac.getScore()+");");
 			 stmt.executeUpdate();
 			
 			stmt.close();
@@ -162,4 +183,60 @@ public class ServerBean implements ServerBeanRemote {
 	
 		return hraci;
 	}
+
+	public void SentEmail(String email, String text) {
+		
+			Properties props = new Properties();
+			
+			props.put("mail.smtp.host", "smtp.gmail.com");
+			props.put("mail.smtp.socketFactory.port", "465");
+			props.put("mail.smtp.socketFactory.class",
+					"javax.net.ssl.SSLSocketFactory");
+			props.put("mail.smtp.auth", "true");
+			props.put("mail.smtp.port", "465");
+			
+			try {
+				
+			Properties p = new Properties();
+			FileReader reader = new FileReader("configuration.properties");
+			p.load(reader);
+			
+			
+			
+			
+			
+			Session session = Session.getDefaultInstance(props,
+				new javax.mail.Authenticator() {
+				
+					protected PasswordAuthentication getPasswordAuthentication() {
+							System.out.println(p.getProperty("USERNAME"));
+					        return new PasswordAuthentication(p.getProperty("USERNAME"),"jusijusi");
+					}
+				});
+
+			
+				
+				Message message = new MimeMessage(session);
+				// configurak nacitaj mail
+				message.setFrom(new InternetAddress("vava.brain.challenge@gmail.com"));
+				message.setRecipients(Message.RecipientType.TO,
+						InternetAddress.parse(email));
+				message.setSubject("Brain challenge app");
+				text = "Thank you for your play\nThank you for your game:\n\n";
+				message.setText(text);
+				
+
+				Transport.send(message);
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+
+			 catch (MessagingException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	
 }
