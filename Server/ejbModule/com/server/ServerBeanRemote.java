@@ -2,9 +2,11 @@ package com.server;
 
 import java.util.List;
 import javax.ejb.Remote;
-
 import com.server.entity.*;
 
+/**
+ * @author Jakub Juško, Ivan Petrov
+ */
 @Remote
 public interface ServerBeanRemote {
 	
@@ -14,6 +16,6 @@ public interface ServerBeanRemote {
 	
 	public List<TopPlayers> getTopPlayers();
 	
-	public void SentEmail(String email, String text);
+	public void SentEmail(String email, TopPlayers hrac);
 
 }
