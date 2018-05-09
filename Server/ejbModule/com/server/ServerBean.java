@@ -2,12 +2,16 @@ package com.server;
 
 import java.sql.*;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import javax.ejb.*;
 import javax.naming.*;
 import javax.sql.DataSource;
 import java.io.IOException;
 import javax.mail.*;
 import javax.mail.internet.*;
+
 import com.server.entity.*;
 
 /**
@@ -19,6 +23,9 @@ import com.server.entity.*;
 @Remote(ServerBeanRemote.class)
 public class ServerBean implements ServerBeanRemote {
 
+	
+	private final static Logger LOG = Logger.getLogger(ServerBean.class.getName());
+	
 	/**
 	 * Metoda ktora nacita z databazy otazky a odpovede podla kategoria
 	 * @param	kategoria_id predstavuje index kategorie
@@ -31,9 +38,6 @@ public class ServerBean implements ServerBeanRemote {
 
 		Properties p = new Properties();
 		Connection conn = null;
-		String otazka = null;
-		String odpoved = null;
-		boolean spr = false;
 		
 		try {
 		
@@ -66,7 +70,7 @@ public class ServerBean implements ServerBeanRemote {
 
 		} catch (IOException | NamingException | SQLException e) {
 
-			e.printStackTrace();
+			LOG.log(Level.INFO, "Loggujem vyminku na serveri( metoda: getOtazky): ", e);
 		}
 	
 	return otazky;
@@ -98,7 +102,7 @@ public class ServerBean implements ServerBeanRemote {
 
 		} catch (IOException | NamingException | SQLException e) {
 
-			e.printStackTrace();
+			LOG.log(Level.INFO, "Loggujem vyminku na serveri( metoda: pridaj): ", e);
 		}
 	}
 
@@ -112,6 +116,7 @@ public class ServerBean implements ServerBeanRemote {
 		
 		List<TopPlayers> hraci = new ArrayList<TopPlayers>();
 		Connection conn = null;
+		PreparedStatement stmt= null;
 		Properties p = new Properties();
 		
 		try {
@@ -121,7 +126,7 @@ public class ServerBean implements ServerBeanRemote {
 			DataSource ds = (DataSource) ctx.lookup(p.getProperty("DATASOURCE"));
 			conn = (Connection) ds.getConnection();
 
-			PreparedStatement stmt = conn.prepareStatement(p.getProperty("SELECTHRACI"));
+			stmt = conn.prepareStatement(p.getProperty("SELECTHRACI"));
 			ResultSet rs = stmt.executeQuery();
 	
 			while (rs.next()) {
@@ -132,16 +137,26 @@ public class ServerBean implements ServerBeanRemote {
 				top.setScore(rs.getInt(2));
 				hraci.add(top);
 			}
-
-			stmt.close();
-			conn.close();
+			
+			
 
 		} catch (IOException | NamingException | SQLException e) {
+			
+			LOG.log(Level.INFO, "Loggujem vyminku na serveri( metoda: getTopPlayers): ", e);
 
-			e.printStackTrace();
+		} finally {
+
+			try {
+				stmt.close();
+				conn.close();
+			} catch (SQLException e) {
+
+				LOG.log(Level.INFO, "Loggujem vyminku na serveri( metoda: getTopPlayers): ", e);
+			}
+
 		}
-	
-	return hraci;
+
+		return hraci;
 	}
 
 	/**
@@ -181,14 +196,10 @@ public class ServerBean implements ServerBeanRemote {
 
 			Transport.send(message);
 
-		} catch (IOException e) {
 
-			e.printStackTrace();
-
-		}
-
-		catch (MessagingException e) {
-			throw new RuntimeException(e);
+		} catch (IOException | MessagingException e) {
+			
+			LOG.log(Level.SEVERE, "Loggujem vyminku na serveri( metoda: sendMail): ", e);
 		}
 	}
 }

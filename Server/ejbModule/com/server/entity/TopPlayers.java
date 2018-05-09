@@ -6,7 +6,8 @@ import java.io.Serializable;
  * @author Jakub Juško, Ivan Petrov
  */
 public class TopPlayers implements Serializable {
-	
+
+	private static final long serialVersionUID = 1L;
 	private String Name;
 	private int score;
 	
